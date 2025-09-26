@@ -54,7 +54,7 @@ class AuthController extends Controller
         // prepara a validação se os campos foram enviados
         $validator = Validator::make($request->all(), [
             'username' => 'required|string|max:255',
-            'senha' => 'required|string',
+            'senha' => 'required',
         ]);
 
         // Se algum campo estiver faltando ou incorreto
@@ -76,9 +76,32 @@ class AuthController extends Controller
         // pega os dados, tipo id, nome etc e codifica em formato JWT e assina com a chave secreta
         $token = JWTAuth::fromUser($user);
 
+        $user->token = $token;
+        $user->save();
+
         // retorna o token
         return response()->json([
             'token' => $token, 200,
         ]);
+    }
+
+    public function logout(Request $request) {
+        $token = $request->header('Authorization');
+        $token = str_replace('Bearer ', '', $token);
+
+        if(!$token) {
+            return response()->json(['Message' => 'Atenção, token não informado'], 422);
+        }
+
+        $user = Usuario::where('token', $token)->first();
+
+        if(!$user) {
+            return response()->json(['Message' => 'Atenção, token inválido'], 401);
+        }
+
+        $user->token = null;
+        $user->save();
+
+        return response()->json(['Message' => 'Logout efetuado com sucesso'], 200);
     }
 }

@@ -11,5 +11,6 @@ Route::get('/user', function (Request $request) {
 
 Route::post('/signup', [AuthController::class, 'signup']);
 
-
 Route::post('/login', [AuthController::class, 'login']);
+
+Route::get('/logout', [AuthController::class, 'logout']);
