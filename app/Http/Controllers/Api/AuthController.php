@@ -86,19 +86,26 @@ class AuthController extends Controller
     }
 
     public function logout(Request $request) {
+        // Pega o valor do header authorization
         $token = $request->header('Authorization');
+
+        // remove o Bearer, restando so o token puro
         $token = str_replace('Bearer ', '', $token);
 
+        // Se não veio nada ho header
         if(!$token) {
             return response()->json(['Message' => 'Atenção, token não informado'], 422);
         }
 
+        // Procura no banco um usuario que tenha esse token salvo
         $user = Usuario::where('token', $token)->first();
 
+        // se não encontrou esse token, então ele é invalido
         if(!$user) {
             return response()->json(['Message' => 'Atenção, token inválido'], 401);
         }
 
+        // Apaga o token do banco
         $user->token = null;
         $user->save();
 
