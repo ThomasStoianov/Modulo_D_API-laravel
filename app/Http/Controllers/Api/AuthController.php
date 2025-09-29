@@ -16,28 +16,40 @@ class AuthController extends Controller
 {
     // cria um metodo publico chamado signup que qualquer parte do laravel ou cliente HTTP pode chamar, recebe um parametro ($request), que contém os dados enviados na requisição
     public function signup(Request $request) {
-        // cria uma variável que recebe a classe validator e prepara uma validação dos campos
-        // Validator::make(dados, regras para aplicar)
+        // 1️⃣ Validação básica dos campos
         $validator = Validator::make($request->all(), [
             'nome' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:usuarios',
+            'email' => 'required|email|max:255',
             'equipe' => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:usuarios',
+            'username' => 'required|string|max:255',
             'senha' => 'required|string',
         ]);
 
-        // Executa a validação e se falhar mostra mensagem de erro
+        // 2️⃣ Campos faltando
         if ($validator->fails()) {
-            return response()->json(["Message" => "Campos faltando ou inválidos"]);
+            // Verifica se algum campo está vazio ou não enviado
+            if ($validator->errors()->hasAny(['nome','email','equipe','username','senha'])) {
+                return response()->json([
+                    "Message" => "Verifique novamente, campos faltando"
+                ], 422);
+            }
         }
 
-        // Vai no model e faz uma consulta no banco de dados se já existe uma usuários cadastrado
-        // ->exists() retorna true se já existe um registro, ou false se não existe nenhum
+        // 3️⃣ Email inválido
+        if ($validator->errors()->has('email')) {
+            return response()->json([
+                "Message" => "Verifique o e-mail, tente novamente"
+            ], 422);
+        }
+
+        // 4️⃣ Verifica se já existe usuário com email ou username
         if(Usuario::where('email', $request->email)->orWhere('username', $request->username)->exists()) {
-            return response()->json(['Message' => 'Usuário já cadastrado!'], 422);
+            return response()->json([
+                "Message" => "Usuário já cadastrado!"
+            ], 422);
         }
 
-        // Pega o a tabela de usuarios e cria um novo registro com os dados enviados na requisição
+        // 5️⃣ Cria o usuário com senha criptografada
         Usuario::create([
             'nome' => $request->nome,
             'email' => $request->email,
@@ -46,7 +58,9 @@ class AuthController extends Controller
             'senha' => Hash::make($request->senha),
         ]);
 
-        return response()->json(['Message' => 'Cadastro efetuado com sucesso!'], 201);
+        return response()->json([
+            "Message" => "Cadastro efetuado com sucesso"
+        ], 201);
     }
 
     // cria o metodo Login

@@ -20,6 +20,8 @@ return new class extends Migration
             $table->unsignedBigInteger('responsavel');
             $table->timestamps();
 
+            // Relacionamentos
+            $table->foreign('tarefa_id')->references('id')->on('tarefas')->onDelete('cascade');
             $table->foreign('responsavel')->references('id')->on('usuarios');
         });
     }

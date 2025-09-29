@@ -12,6 +12,7 @@ use App\Models\Tarefa;
 
 class TarefaController extends Controller
 {
+    // CRIA TAREFA
     public function add_tarefa(Request $request) {
 
         $token = $request->header('Authorization');
@@ -65,4 +66,150 @@ class TarefaController extends Controller
             'Message' => 'Nova tarefa registrada com sucesso'
         ], 201);
     }
+
+    // LISTA TAREFAS
+    public function lista_tarefas(Request $request)
+    {
+        $token = $request->header('Authorization');
+        $token = str_replace('Bearer ', '', $token);
+
+        if (!$token) {
+            return response()->json([
+                "Message" => "Atenção, token não informado"
+            ], 422);
+        }
+
+        $usuario = Usuario::where('token', $token)->first();
+        if (!$usuario) {
+            return response()->json([
+                "Message" => "Atenção, token inválido"
+            ], 401);
+        }
+
+        $equipe = strtolower($usuario->equipe);
+
+        if ($equipe === 'gerente de projeto') {
+            $tarefas = Tarefa::orderBy('created_at', 'asc')->get();
+        } elseif ($equipe === 'desenvolvimento') {
+            $tarefas = Tarefa::orderBy('created_at', 'asc')->get();
+        } elseif ($equipe === 'design') {
+            $tarefas = Tarefa::where('equipe', 'design')
+                ->orderBy('created_at', 'asc')
+                ->get();
+        } else {
+            return response()->json([
+                "Message" => "Equipe não reconhecida"
+            ], 403);
+        }
+
+        return response()->json([
+            "Tarefas" => $tarefas
+        ], 200);
+    }
+
+    // CONSULTA TAREFA PELO ID
+    public function consulta_tarefa(request $request, $id)
+    {
+        $token = $request->header('Authorization');
+        $token = str_replace('Bearer ', '', $token);
+
+        if (!$token) {
+            return response()->json([
+                "Message" => "Atenção, token não informado"
+            ], 422);
+        }
+
+        $usuario = Usuario::where('token', $token)->first();
+        if(!$usuario){
+            return response()->json([
+                "Message" => "Atenção, token inválido"
+            ], 401);
+        }
+
+        $tarefa = Tarefa::with('subtarefas')->find($id);
+        if(!$tarefa){
+            return response()->json([
+                "Message" => "Tarefa não encontrada"
+            ], 404);
+        }
+
+        if($usuario->equipe == 'Gerente de Projeto'){
+            return response()->json([
+                "Tarefas" => $tarefa
+            ]);
+        }
+
+        // Desenvolvedor
+        if ($usuario->equipe === 'desenvolvimento') {
+            if ($tarefa->equipe !== 'desenvolvimento') {
+                return response()->json([
+                    "Message" => "Você não tem permissão para visualizar esta tarefa"
+                ], 403);
+            }
+            return response()->json([
+                "Tarefas" => $tarefa
+            ], 200);
+        }
+
+        // Designer
+        if ($usuario->equipe === 'design') {
+            if ($tarefa->equipe !== 'design') {
+                return response()->json([
+                    "Message" => "Você não tem permissão para visualizar esta tarefa"
+                ], 403);
+            }
+            return response()->json([
+                "Tarefas" => $tarefa
+            ], 200);
+        }
+    }
+
+    public function tarefas_equipe(Request $request, $equipe)
+    {
+        // Pega o token do header
+        $token = $request->header('Authorization');
+        $token = str_replace('Bearer ', '', $token);
+
+        if (!$token) {
+            return response()->json([
+                "Message" => "Atenção, token não informado"
+            ], 422);
+        }
+
+        // Pega o usuário pelo token
+        $usuario = Usuario::where('token', $token)->first();
+        if (!$usuario) {
+            return response()->json([
+                "Message" => "Atenção, token inválido"
+            ], 401);
+        }
+
+        // Converte para minúsculas para evitar problema de maiúsculas/minúsculas
+        $usuarioEquipe = strtolower($usuario->equipe);
+        $equipe = strtolower($equipe);
+
+        // Checa permissões
+        if ($usuarioEquipe === 'gerente de projeto') {
+            // Gerente vê qualquer equipe
+        } elseif ($usuarioEquipe === 'desenvolvimento' && $equipe !== 'desenvolvimento') {
+            return response()->json([
+                "Message" => "Você não tem permissão para visualizar esta equipe"
+            ], 403);
+        } elseif ($usuarioEquipe === 'design' && $equipe !== 'design') {
+            return response()->json([
+                "Message" => "Você não tem permissão para visualizar esta equipe"
+            ], 403);
+        }
+
+        // Busca todas as tarefas da equipe com subtarefas
+        $tarefas = Tarefa::with('subtarefas')
+            ->where('equipe', $equipe)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return response()->json([
+            "Tarefas" => $tarefas
+        ], 200);
+    }
+
 }

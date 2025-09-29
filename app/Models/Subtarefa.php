@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Tarefa extends Model
+class Subtarefa extends Model
 {
-    use HasFactory;
+    use hasFactory;
 
-    protected $table = 'tarefas';
+    protected $table = 'subtarefas'; // nome da tabela
 
     protected $fillable = [
         'titulo',
@@ -20,11 +20,12 @@ class Tarefa extends Model
         'status',
         'projeto',
         'responsavel',
+        'tarefa_id' // chave estrangeira para a tarefa
     ];
 
-    //Uma Tarefa tem várias Subtarefas ligadas pelo tarefa_id
-    public function subtarefas()
+    // Cada Subtarefa pertence a uma única Tarefa
+    public function tarefa()
     {
-        return $this->hasMany(Subtarefa::class, 'tarefa_id');
+        return $this->belongsTo(Tarefa::class, 'tarefa_id');
     }
 }
