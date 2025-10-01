@@ -16,7 +16,7 @@ class AuthController extends Controller
 {
     // cria um metodo publico chamado signup que qualquer parte do laravel ou cliente HTTP pode chamar, recebe um parametro ($request), que contém os dados enviados na requisição
     public function signup(Request $request) {
-        // 1️⃣ Validação básica dos campos
+        // Validação básica dos campos
         $validator = Validator::make($request->all(), [
             'nome' => 'required|string|max:255',
             'email' => 'required|email|max:255',
@@ -25,7 +25,7 @@ class AuthController extends Controller
             'senha' => 'required|string',
         ]);
 
-        // 2️⃣ Campos faltando
+        // Campos faltando
         if ($validator->fails()) {
             // Verifica se algum campo está vazio ou não enviado
             if ($validator->errors()->hasAny(['nome','email','equipe','username','senha'])) {
@@ -35,21 +35,21 @@ class AuthController extends Controller
             }
         }
 
-        // 3️⃣ Email inválido
+        // Email inválido
         if ($validator->errors()->has('email')) {
             return response()->json([
                 "Message" => "Verifique o e-mail, tente novamente"
             ], 422);
         }
 
-        // 4️⃣ Verifica se já existe usuário com email ou username
+        // Verifica se já existe usuário com email ou username
         if(Usuario::where('email', $request->email)->orWhere('username', $request->username)->exists()) {
             return response()->json([
                 "Message" => "Usuário já cadastrado!"
             ], 422);
         }
 
-        // 5️⃣ Cria o usuário com senha criptografada
+        // Cria o usuário com senha criptografada
         Usuario::create([
             'nome' => $request->nome,
             'email' => $request->email,
@@ -125,4 +125,5 @@ class AuthController extends Controller
 
         return response()->json(['Message' => 'Logout efetuado com sucesso'], 200);
     }
+
 }

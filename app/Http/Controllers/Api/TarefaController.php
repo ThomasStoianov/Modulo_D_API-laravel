@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Subtarefa;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
-use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Usuario;
 use App\Models\Tarefa;
 
@@ -108,7 +108,7 @@ class TarefaController extends Controller
     }
 
     // CONSULTA TAREFA PELO ID
-    public function consulta_tarefa(request $request, $id)
+    public function consulta_tarefa(Request $request, $id)
     {
         $token = $request->header('Authorization');
         $token = str_replace('Bearer ', '', $token);
@@ -209,6 +209,116 @@ class TarefaController extends Controller
 
         return response()->json([
             "Tarefas" => $tarefas
+        ], 200);
+    }
+
+    public function altera_tarefa(Request $request, $id)
+    {
+        $token = $request->header('Authorization');
+        $token = str_replace('Bearer ', '', $token);
+
+        if (!$token) {
+            return response()->json(["Message" => "Atenção, token não informado"], 422);
+        }
+
+        $usuario = Usuario::where('token', $token)->first();
+        if (!$usuario) {
+            return response()->json(["Message" => "Atenção, token inválido"], 401);
+        }
+
+        // Padroniza campos
+        if ($request->has('status')) $request->merge(['status' => strtolower(trim($request->status))]);
+        if ($request->has('prioridade')) $request->merge(['prioridade' => strtolower(trim($request->prioridade))]);
+
+        // Validação dos campos opcionais
+        $validator = Validator::make($request->all(), [
+            'descricao' => 'nullable|string',
+            'prazo' => 'nullable|date',
+            'status' => 'nullable|in:pendente,em andamento,concluída',
+            'prioridade' => 'nullable|in:alta,média,baixa',
+            'responsavel' => 'nullable|integer|exists:usuarios,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(["Message" => "Erro de validação", "Erros" => $validator->errors()], 422);
+        }
+
+        // Busca a tarefa pelo id da rota
+        $tarefa = Tarefa::find($id);
+        if (!$tarefa) {
+            return response()->json(["Message" => "Tarefa não encontrada"], 404);
+        }
+
+        $equipe = strtolower($usuario->equipe);
+        if (($equipe === 'desenvolvimento' && strtolower($tarefa->equipe) !== 'desenvolvimento') ||
+            ($equipe === 'design' && strtolower($tarefa->equipe) !== 'design')) {
+            return response()->json(["Message" => "Você não pode alterar tarefas de outra equipe"], 403);
+        }
+
+        // Atualiza apenas os campos enviados
+        $campos = ['descricao', 'prazo', 'status', 'prioridade', 'responsavel'];
+        foreach ($campos as $campo) {
+            if ($request->has($campo)) {
+                $tarefa->$campo = $request->$campo;
+            }
+        }
+
+        $tarefa->save();
+
+        return response()->json([
+            "Message" => "Tarefa atualizada com sucesso!",
+            "Tarefa" => $tarefa
+        ], 200);
+    }
+
+    public function delete_tarefa(Request $request, $id)
+    {
+        // Pega o token do header
+        $token = $request->header('Authorization');
+        $token = str_replace('Bearer ', '', $token);
+
+        if (!$token) {
+            return response()->json([
+                "Message" => "Atenção, token não informado"
+            ], 422);
+        }
+
+        // Verifica se o usuário existe
+        $usuario = Usuario::where('token', $token)->first();
+        if (!$usuario) {
+            return response()->json([
+                "Message" => "Atenção, token inválido"
+            ], 401);
+        }
+
+        // Só Gerente de Projeto pode deletar
+        if (strtolower($usuario->equipe) !== 'gerente de projeto') {
+            return response()->json([
+                "Message" => "Apenas o Gerente de Projeto pode deletar tarefas"
+            ], 403);
+        }
+
+        // Busca a tarefa
+        $tarefa = Tarefa::find($id);
+        if (!$tarefa) {
+            return response()->json([
+                "Message" => "Tarefa não encontrada"
+            ], 404);
+        }
+
+        // Verifica se a tarefa tem subtarefas
+        $subtarefas = Subtarefa::where('tarefa_id', $id)->count();
+        if ($subtarefas > 0) {
+            return response()->json([
+                "Message" => "Não é possível deletar uma tarefa que contenha subtarefas"
+            ], 422);
+        }
+
+        // Deleta a tarefa
+        $tarefa->delete();
+
+        return response()->json([
+            "Message" => "Tarefa deletada com sucesso!"
         ], 200);
     }
 
